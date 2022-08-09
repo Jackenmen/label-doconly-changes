@@ -1,0 +1,51 @@
+default_language_version:
+  python: python3.10
+repos:
+  - repo: https://github.com/psf/black
+    rev: '22.6.0'
+    hooks:
+      - id: black
+  - repo: https://github.com/Pierre-Sassoulas/black-disable-checker
+    rev: 'v1.1.1'
+    hooks:
+      - id: black-disable-checker
+  - repo: https://github.com/pycqa/isort
+    rev: '5.10.1'
+    hooks:
+      - id: isort
+  - repo: https://github.com/pycqa/flake8
+    rev: '5.0.4'
+    hooks:
+      - id: flake8
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.3.0
+    hooks:
+      - id: end-of-file-fixer
+        # po files are auto-generated so let's not touch them
+        exclude_types: [pofile]
+
+      # Trailing whitespace is evil
+      - id: trailing-whitespace
+
+      # Syntax validation
+      - id: check-ast
+      - id: check-json
+      - id: check-toml
+      # can be switched to yamllint when this issue gets resolved:
+      # https://github.com/adrienverge/yamllint/issues/238
+      - id: check-yaml
+
+      # JSON auto-formatter
+      - id: pretty-format-json
+        args:
+          - "--autofix"
+          - "--indent=4"
+          - "--no-sort-keys"
+
+      # Checks for git-related issues
+      - id: check-case-conflict
+      - id: check-merge-conflict
+  - repo: https://github.com/pre-commit/pygrep-hooks
+    rev: v1.9.0
+    hooks:
+      - id: python-check-blanket-noqa
