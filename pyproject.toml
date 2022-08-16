@@ -26,3 +26,4 @@ profile = "black"
 line_length = 88
 skip_gitignore = true
 atomic = true
+known_first_party = ["python"]

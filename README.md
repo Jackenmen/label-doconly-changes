@@ -8,6 +8,8 @@
 
 > GitHub action for labelling and unlabelling PRs based on whether they contain
 > only documentation changes.
+>
+> Supports file patterns and Python docstrings.
 
 ## Basic usage
 
@@ -28,6 +30,10 @@ jobs:
     steps:
       - name: Label documentation-only changes.
         uses: jack1142/label-doconly-changes@v1
+        with:
+          python-version: '3.6'
+        env:
+          LDC_ENABLED_HOOKS: unconditional,python
 ```
 
 ## Global options
@@ -80,6 +86,32 @@ Default value of `LXC_HOOK_UNCONDTIONAL__FILES`:
 *.md
 ```
 
+### `python`
+
+Files handled by this hook are allowed to be in the PR *if* they're Python files
+containing only docstring changes.
+
+Default value of `LXC_HOOK_PYTHON__FILES`:
+```gitignore
+*.py
+```
+
+#### Hook options
+
+##### `python-version` (`with:`)
+
+The Python version in `3.x` format that should be used for parsing the syntax of
+the changed files. This needs to be specified if `python` hook is enabled.
+
+Minimum supported version is Python 3.6.
+
+```yaml
+- name: Label documentation-only changes.
+  uses: jack1142/label-doconly-changes@v1
+  with:
+    python-version: '3.6'
+```
+
 ## Examples
 
 ```yaml
@@ -94,6 +126,8 @@ label_doconly_changes:
   steps:
     - name: Label documentation-only changes.
       uses: jack1142/label-doconly-changes@v1
+      with:
+        python-version: '3.6'
       env:
         # unconditionally label *.txt files if they're not `docs/prolog.txt`
         LXC_HOOK_UNCONDITIONAL__FILES: |-
@@ -101,6 +135,8 @@ label_doconly_changes:
           *.md
           *.txt
           !/docs/prolog.txt
+        # enable `python` hook
+        LDC_ENABLED_HOOKS: unconditional,python
 ```
 
 ## License
