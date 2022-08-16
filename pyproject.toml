@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=64.0", "setuptools_scm[toml]>=7.0.5"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "label-doconly-changes"
+dependencies = [
+    "pathspec",
+]
+dynamic = ["version"]
+
+[project.optional-dependencies]
+test = [
+    # 7.0.1 to keep Python 3.6 support
+    "pytest>=7.0.1,<8",
+]
+
+[project.scripts]
+label-doconly-changes = "label_doconly_changes.__main__:main"
+
+[tool.setuptools_scm]
+git_describe_command = "git describe --dirty --tags --long --exclude v[0-9]*"
+
+[tool.isort]
+profile = "black"
+line_length = 88
+skip_gitignore = true
+atomic = true
