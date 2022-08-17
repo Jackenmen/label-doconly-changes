@@ -19,7 +19,7 @@ class App:
         self.exit_code = 0
         self.base_ref = base_ref
         self.options: dict[str, str] = {
-            "enabled_hooks": "unconditional",
+            "enabled_hooks": "unconditional,python",
             **(options or {}),
         }
         self.hook_options = hook_options or {}

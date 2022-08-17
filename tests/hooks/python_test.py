@@ -2,7 +2,7 @@ from textwrap import dedent
 
 import pytest
 
-from python import get_tokens
+from label_doconly_changes.hooks import python
 
 
 @pytest.mark.parametrize(
@@ -71,8 +71,10 @@ from python import get_tokens
         ),
     ),
 )
-def test_get_tokens(
-    contents_before: str, contents_after: str, is_doc_only: bool
+def test_docstring_removal(
+    contents_before: str,
+    contents_after: str,
+    is_doc_only: bool,
 ) -> None:
     contents_before = dedent(contents_before)
     contents_after = dedent(contents_after)
@@ -82,10 +84,17 @@ def test_get_tokens(
     print(contents_after)
     print("--------------")
 
-    before = get_tokens(contents_before)
-    after = get_tokens(contents_after)
-
+    before = python.PythonHook.parse(contents_before)
+    after = python.PythonHook.parse(contents_after)
     if is_doc_only:
-        assert before == after
+        try:
+            assert before.deep_equals(after)
+        except AssertionError:
+            assert repr(before) == repr(after)
+            raise
     else:
-        assert before != after
+        try:
+            assert not before.deep_equals(after)
+        except AssertionError:
+            assert repr(before) != repr(after)
+            raise

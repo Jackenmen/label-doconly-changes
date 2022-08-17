@@ -85,6 +85,39 @@ class FileInfo:
         }
 
 
+class HookOutput:
+    __slots__ = ("is_doc_only", "messages")
+
+    def __init__(self) -> None:
+        self.is_doc_only = True
+        self.messages = []
+
+    def info(self, filename: str, text: str) -> None:
+        self.messages.append(
+            {
+                "type": "info",
+                "filename": filename,
+                "text": text,
+            }
+        )
+
+    def error(self, filename: str, text: str) -> None:
+        self.is_doc_only = False
+        self.messages.append(
+            {
+                "type": "error",
+                "filename": filename,
+                "text": text,
+            }
+        )
+
+    def to_json(self) -> HookOutputDict:
+        return {
+            "is_doc_only": self.is_doc_only,
+            "messages": self.messages,
+        }
+
+
 class Hook:
     HOOKS_DIR = os.path.join(os.path.dirname(__file__), "hooks")
 

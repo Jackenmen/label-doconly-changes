@@ -3,13 +3,6 @@ author: Jakub Kuczys
 description: >-
   GitHub action for labelling and unlabelling PRs based on whether they contain
   only documentation changes. Supports file patterns and Python docstrings.
-inputs:
-  python-version:
-    description: >-
-      Python version to use.
-      If not specified, no Python docstring detection will be performed.
-    required: true
-    default: ''
 runs:
   using: composite
   steps:
@@ -21,14 +14,6 @@ runs:
         git fetch origin +refs/pull/${{ github.event.pull_request.number }}/merge
         git checkout FETCH_HEAD
       shell: bash
-
-    - name: Setup Python for the docstring detection.
-      id: python-for-docstrings
-      uses: actions/setup-python@v4
-      if: inputs.python-version != ''
-      with:
-        python-version: ${{ inputs.python-version }}
-        update-environment: false
 
     - name: Setup Python for the action.
       id: python-for-action
@@ -44,5 +29,3 @@ runs:
         --spec '${{ github.action_path }}'
         label_doconly_changes
       shell: bash
-      env:
-        LDC_HOOK_PYTHON__EXECUTABLE: ${{ steps.python-for-docstrings.outputs.python-path }}
