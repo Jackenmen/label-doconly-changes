@@ -5,35 +5,51 @@ import os
 import subprocess
 import sys
 
-from .base_hooks import FileInfo
+from .base_hooks import FileInfo, get_hook_by_name
 
 
 class App:
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        *,
+        base_ref: str,
+        options: dict[str, str] | None = None,
+        hook_options: dict[str, dict[str, str]] | None = None,
+    ) -> None:
         self.exit_code = 0
-        self.base_ref = os.environ["GITHUB_BASE_REF"]
+        self.base_ref = base_ref
         self.options: dict[str, str] = {
             "enabled_hooks": "unconditional",
+            **(options or {}),
         }
-        self.hook_options: dict[str, dict[str, str]] = {}
+        self.hook_options = hook_options or {}
         self.hooks = []
 
+    @classmethod
+    def from_environ(cls) -> App:
+        app_options: dict[str, str] = {}
+        hook_options: dict[str, dict[str, str]] = {}
         for key, value in os.environ.items():
             if key.startswith("LDC_"):
                 if key.startswith("HOOK_", 4):
                     hook_name, _, option_name = key[9:].lower().partition("__")
-                    options = self.hook_options.setdefault(hook_name, {})
+                    options = hook_options.setdefault(hook_name, {})
                     options[option_name] = value
                 else:
-                    self.options[key[4:].lower()] = value
+                    app_options[key[4:].lower()] = value
 
+        return cls(
+            base_ref=os.environ["GITHUB_BASE_REF"],
+            options=app_options,
+            hook_options=hook_options,
+        )
+
+    def load_hooks(self) -> None:
         for hook_name in self.options["enabled_hooks"].split(","):
             hook_name = hook_name.strip()
             mod_name, _, subhook_name = hook_name.partition(".")
             module = importlib.import_module(f"label_doconly_changes.hooks.{mod_name}")
-            hook = next(
-                hook for hook in module.AVAILABLE_HOOKS if hook.name == hook_name
-            )
+            hook = get_hook_by_name(module, hook_name)
             allowed_files = self.hook_options.get(hook_name, {}).get("allowed_files")
             if allowed_files:
                 hook.set_file_patterns(allowed_files.splitlines())
@@ -51,6 +67,7 @@ class App:
             ("git", "diff", "--name-only", f"{self.base_ref}.."), encoding="utf-8"
         ).splitlines()
 
+        self.load_hooks()
         to_run = {hook: [] for hook in self.hooks}
 
         for filename in files:

@@ -158,3 +158,7 @@ class SubprocessHook(Hook):
 
 class HookModule(Protocol):
     AVAILABLE_HOOKS: list[Hook]
+
+
+def get_hook_by_name(module: HookModule, name: str):
+    return next(hook for hook in module.AVAILABLE_HOOKS if hook.name == name)

@@ -2,7 +2,8 @@ from .app import App
 
 
 def main() -> None:
-    raise SystemExit(App().run())
+    app = App.from_environ()
+    raise SystemExit(app.run())
 
 
 if __name__ == "__main__":
