@@ -1,4 +1,5 @@
 import os
+from collections.abc import Sequence
 
 import libcst as cst
 
@@ -12,10 +13,14 @@ class DocstringRemover(cst.CSTTransformer):
     def strip_docstring(
         self, updated_node: cst.Module | cst.ClassDef | cst.FunctionDef
     ) -> cst.CSTNode:
-        if not updated_node.body:
-            return updated_node
+        body = updated_node.body
+        if isinstance(body, Sequence):
+            if not updated_node.body:
+                return updated_node
+            expr = body[0]
+        else:
+            expr = body
 
-        expr = updated_node.body[0]
         while isinstance(expr, (cst.BaseSuite, cst.SimpleStatementLine)):
             if not expr.body:
                 return updated_node
