@@ -14,13 +14,8 @@ def test_is_doc_only_true(contents_before: str, contents_after: str) -> None:
     print(contents_after)
     print("--------------")
 
-    before = python.PythonHook.parse(contents_before)
-    after = python.PythonHook.parse(contents_after)
-    try:
-        assert before.deep_equals(after)
-    except AssertionError:
-        assert repr(before) == repr(after)
-        raise
+    analyzer = python.PythonAnalyzer(contents_before, contents_after)
+    assert analyzer.is_docstring_only()
 
 
 @pytest.mark.parametrize(
@@ -33,10 +28,5 @@ def test_is_doc_only_false(contents_before: str, contents_after: str) -> None:
     print(contents_after)
     print("--------------")
 
-    before = python.PythonHook.parse(contents_before)
-    after = python.PythonHook.parse(contents_after)
-    try:
-        assert not before.deep_equals(after)
-    except AssertionError:
-        assert repr(before) != repr(after)
-        raise
+    analyzer = python.PythonAnalyzer(contents_before, contents_after)
+    assert not analyzer.is_docstring_only()

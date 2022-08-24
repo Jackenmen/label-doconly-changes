@@ -126,3 +126,60 @@ class Foo:
 
     BAR = "BAR"
 # ===
+
+
+# [WHITESPACE]
+# === removal of a class docstring ===
+# --- BEFORE ---
+class Foo:
+    """class docstring"""
+
+    BAR = "BAR"
+# --- AFTER ----
+class Foo:
+    BAR = "BAR"
+# ===
+
+# === Remove module docstring without removing the line it's in ===
+# --- BEFORE ---
+"""module docstring"""
+
+
+def func():
+    ...
+# --- AFTER ----
+
+
+
+def func():
+    ...
+# ===
+
+# === a lot of whitespace added with a docstring ===
+# --- BEFORE ---
+class Foo:
+    BAR = "BAR"
+# --- AFTER ----
+class Foo:
+
+
+    """changed docstring"""
+
+
+    BAR = "BAR"
+# ===
+
+# === docstring addition using line continuation and implicit concatenation ===
+# --- BEFORE ---
+class Foo:
+    BAR = "BAR"
+# --- AFTER ----
+class Foo:
+    """hmm""" \
+    \
+    """changed docstring"""
+
+
+    BAR = "BAR"
+# ===
+

@@ -99,3 +99,19 @@ class Foo:
 
     BAR = "FOO"
 # ===
+
+
+# [WHITESPACE]
+# === whitespace modified without docstring removal ===
+# --- BEFORE ---
+class Foo:
+    """class docstring"""
+
+    BAR = "BAR"
+# --- AFTER ----
+class Foo:
+    """changed docstring"""
+
+
+    BAR = "BAR"
+# ===
