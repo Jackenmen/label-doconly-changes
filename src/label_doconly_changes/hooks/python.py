@@ -3,6 +3,7 @@ from __future__ import annotations
 import dataclasses
 import itertools
 import os
+from collections import deque
 from collections.abc import Iterator, Sequence
 from typing import TypeVar
 
@@ -105,18 +106,40 @@ class DocstringExtractor(NodeListGenerator):
         return (parent, expr)
 
 
+class NodeIterator(Iterator[cst.CSTNode]):
+    def __init__(self, nodes: list[cst.CSTNode]) -> None:
+        self.name = None
+        self.additional_nodes: deque[cst.CSTNode] = deque()
+        self.current = -1
+        self.nodes = nodes
+        self.nodes_it = enumerate(nodes)
+
+    def __repr__(self) -> None:
+        return f"<NodeIterator {self.name!r} current={self.current!r}>"
+
+    def __iter__(self) -> NodeIterator:
+        return self
+
+    def __next__(self) -> cst.CSTNode:
+        if self.additional_nodes:
+            return self.additional_nodes.popleft()
+        self.current, node = next(self.nodes_it)
+        return node
+
+
 class PythonAnalyzer:
     def __init__(self, contents_before: str, contents_after: str) -> None:
         self.before = DocstringExtractor.from_contents(contents_before)
         self.after = DocstringExtractor.from_contents(contents_after)
 
     def is_docstring_only(self) -> bool:
-        before_it = iter(self.before.nodes)
-        after_it = iter(self.after.nodes)
+        before_it = NodeIterator(self.before.nodes)
+        after_it = NodeIterator(self.after.nodes)
         before_loc = after_loc = (None, None)
         expr_count = 0
         skip_compare = False
-        for a, b in itertools.zip_longest(before_it, after_it):
+        it = itertools.zip_longest(before_it, after_it)
+        for a, b in it:
             if a is None or b is None:
                 return False
 
@@ -128,6 +151,15 @@ class PythonAnalyzer:
                     )
                 else:
                     b = self._consume_docstring_with_whitespace(after_it, after_loc[1])
+                before_it.additional_nodes.appendleft(a)
+                after_it.additional_nodes.appendleft(b)
+                for a, b in it:
+                    if a is None or b is None:
+                        return False
+                    if not shallow_equals(a, b):
+                        return False
+                    if isinstance(a, cst.BaseStatement):
+                        break
                 self._consume_leading_lines(a, before_it)
                 self._consume_leading_lines(b, after_it)
                 continue
@@ -142,18 +174,25 @@ class PythonAnalyzer:
                 skip_compare = True
                 continue
 
-            if type(a) in (cst.Module, cst.ClassDef, cst.FunctionDef):
+            node_type = type(a)
+            if node_type in (cst.Module, cst.ClassDef, cst.FunctionDef):
                 before_loc = self.before.doc_locations[a]
                 after_loc = self.after.doc_locations[b]
                 expr_count = 2 - (before_loc, after_loc).count((None, None))
+                if expr_count == 1 and node_type is cst.Module:
+                    if before_loc[0] is None:
+                        self._consume_leading_lines(a, before_it)
+                    else:
+                        self._consume_leading_lines(b, after_it)
 
         return True
 
     @staticmethod
     def _consume_docstring_with_whitespace(
-        nodes: Iterator[cst.CSTNode], expr: cst.Expr
+        nodes: NodeIterator, expr: cst.Expr
     ) -> cst.CSTNode:
         skip_until = None
+        additional_nodes = []
         for node in nodes:
             if skip_until is not None:
                 if node is skip_until:
@@ -167,11 +206,15 @@ class PythonAnalyzer:
                 cst.EmptyLine,
             ):
                 continue
+            if type(node) is cst.Comment:
+                additional_nodes.append(node)
+                continue
             if node is expr:
                 skip_until = expr.value
                 while isinstance(skip_until, cst.ConcatenatedString):
                     skip_until = skip_until.right
                 continue
+            nodes.additional_nodes.extend(additional_nodes)
             return node
         else:
             # TODO: figure out if this can happen in sth like:
@@ -182,13 +225,22 @@ class PythonAnalyzer:
 
     @staticmethod
     def _consume_leading_lines(
-        statement: cst.SimpleStatementLine | cst.BaseCompoundStatement,
-        iterator: Iterator[cst.CSTNode],
+        statement: cst.Module | cst.SimpleStatementLine | cst.BaseCompoundStatement,
+        iterator: NodeIterator,
     ) -> None:
-        for base_node in statement.leading_lines:
+        if type(statement) is cst.Module:
+            leading_lines = statement.header
+        else:
+            leading_lines = statement.leading_lines
+
+        additional_nodes = []
+        for base_node in leading_lines:
             for node in NodeListGenerator.from_node(base_node).nodes:
                 if node is not next(iterator, None):
                     raise RuntimeError("Expected leading line is missing.")
+                if type(node) is cst.Comment:
+                    additional_nodes.append(node)
+        iterator.additional_nodes.extend(additional_nodes)
 
 
 class PythonHook(Hook):

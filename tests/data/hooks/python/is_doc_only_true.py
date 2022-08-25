@@ -140,7 +140,7 @@ class Foo:
     BAR = "BAR"
 # ===
 
-# === Remove module docstring without removing the line it's in ===
+# === remove module docstring without removing the line it's in ===
 # --- BEFORE ---
 """module docstring"""
 
@@ -183,3 +183,28 @@ class Foo:
     BAR = "BAR"
 # ===
 
+
+# [COMMENTS]
+# === add a class docstring before a comment ===
+# --- BEFORE ---
+class Foo:
+    # some code comment
+    ...
+# --- AFTER ----
+class Foo:
+    """class docstring"""
+    # some code comment
+    ...
+# ===
+
+# === add a class docstring after a comment ===
+# --- BEFORE ---
+class Foo:
+    # some code comment
+    ...
+# --- AFTER ----
+class Foo:
+    # some code comment
+    """class docstring"""
+    ...
+# ===

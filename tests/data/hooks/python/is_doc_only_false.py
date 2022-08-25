@@ -115,3 +115,83 @@ class Foo:
 
     BAR = "BAR"
 # ===
+
+# === remove shebang and docstring ===
+# --- BEFORE ---
+#!/usr/bin/python
+"""module docstring"""
+
+
+def func():
+    ...
+# --- AFTER ----
+
+
+
+def func():
+    ...
+# ===
+
+
+# [COMMENTS]
+# === remove shebang and add docstring ===
+# --- BEFORE ---
+#!/usr/bin/python
+
+
+def func():
+    ...
+# --- AFTER ----
+"""module docstring"""
+
+
+def func():
+    ...
+# ===
+
+# === remove comment in a function and add docstring ===
+# --- BEFORE ---
+def func():
+    # some code comment
+    ...
+# --- AFTER ----
+def func():
+    """function docstring"""
+    ...
+# ===
+
+# === remove comment in a class and add docstring ===
+# --- BEFORE ---
+class Foo:
+    # some code comment
+    ...
+# --- AFTER ----
+class Foo:
+    """class docstring"""
+    ...
+# ===
+
+# === edit comment in a class and add docstring ===
+# --- BEFORE ---
+class Foo:
+    # some code comment
+    ...
+# --- AFTER ----
+class Foo:
+    # different code comment
+    """class docstring"""
+    ...
+# ===
+
+# === edit comment in a class ===
+# --- BEFORE ---
+class Foo:
+    # some code comment
+    """class docstring"""
+    ...
+# --- AFTER ----
+class Foo:
+    # different code comment
+    """class docstring"""
+    ...
+# ===
