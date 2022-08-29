@@ -4,15 +4,16 @@ from typing import Iterator
 HOOK_TEST_DATA = Path(__file__).parent.absolute() / "data/hooks"
 
 
-def get_hook_test_data(filename: str) -> list[tuple[str, str]]:
-    with open(HOOK_TEST_DATA / filename, encoding="utf-8") as fp:
-        contents = fp.read()
-
+def get_hook_test_data(*filenames: str) -> list[tuple[str, str]]:
     file_data = []
-    it = iter(contents.splitlines(True))
-    for line in it:
-        if line.startswith("# --- BEFORE"):
-            file_data.append(_read_test_file(it))
+    for filename in filenames:
+        with open(HOOK_TEST_DATA / filename, encoding="utf-8") as fp:
+            contents = fp.read()
+
+        it = iter(contents.splitlines(True))
+        for line in it:
+            if line.startswith("# --- BEFORE"):
+                file_data.append(_read_test_file(it))
 
     return file_data
 
