@@ -214,14 +214,12 @@ class PythonAnalyzer:
                 while isinstance(skip_until, cst.ConcatenatedString):
                     skip_until = skip_until.right
                 continue
-            nodes.additional_nodes.extend(additional_nodes)
-            return node
+            break
         else:
-            # TODO: figure out if this can happen in sth like:
-            # class X:
-            #     '''docstring'''
-            # [END OF FILE]
-            raise RuntimeError("Ran out of nodes?")
+            if skip_until is not None:
+                raise RuntimeError("Couldn't find the `skip_until` node.")
+        nodes.additional_nodes.extend(additional_nodes)
+        return node
 
     @staticmethod
     def _consume_leading_lines(

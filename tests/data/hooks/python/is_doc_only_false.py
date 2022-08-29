@@ -86,6 +86,14 @@ class Foo:
     BAR = "FOO"
 # ===
 
+# --- BEFORE ---
+class Foo:
+    ...
+# --- AFTER ----
+class Foo:
+    """class docstring"""
+# ===
+
 
 # === modified docstring *and* attribute value ===
 # --- BEFORE ---
