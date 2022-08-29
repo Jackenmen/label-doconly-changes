@@ -107,8 +107,8 @@ class DocstringExtractor(NodeListGenerator):
 
 
 class NodeIterator(Iterator[cst.CSTNode]):
-    def __init__(self, nodes: list[cst.CSTNode]) -> None:
-        self.name = None
+    def __init__(self, nodes: list[cst.CSTNode], *, name: str | None = None) -> None:
+        self.name = name
         self.additional_nodes: deque[cst.CSTNode] = deque()
         self.current = -1
         self.nodes = nodes
@@ -133,8 +133,8 @@ class PythonAnalyzer:
         self.after = DocstringExtractor.from_contents(contents_after)
 
     def is_docstring_only(self) -> bool:
-        before_it = NodeIterator(self.before.nodes)
-        after_it = NodeIterator(self.after.nodes)
+        before_it = NodeIterator(self.before.nodes, name="before")
+        after_it = NodeIterator(self.after.nodes, name="after")
         before_loc = after_loc = (None, None)
         expr_count = 0
         skip_compare = False
