@@ -12,6 +12,9 @@ if TYPE_CHECKING:
     from .app import App
 
 
+MessageType = Literal["fail", "success", "error", "info"]
+
+
 class FileInfoDict(TypedDict):
     filename: str
     contents_before: str
@@ -25,12 +28,13 @@ class HookInputDict(TypedDict):
 
 
 class MessageDict(TypedDict):
-    type: Literal["error", "info"]
+    type: MessageType
     filename: str
     text: str
 
 
 class HookOutputDict(TypedDict):
+    errored: bool
     is_doc_only: bool
     messages: list[MessageDict]
 
@@ -86,33 +90,40 @@ class FileInfo:
 
 
 class HookOutput:
-    __slots__ = ("is_doc_only", "messages")
+    __slots__ = ("errored", "is_doc_only", "messages")
 
     def __init__(self) -> None:
+        self.errored = False
         self.is_doc_only = True
         self.messages = []
 
-    def info(self, filename: str, text: str) -> None:
+    def _add_message(self, msg_type: MessageType, filename: str, text: str) -> None:
         self.messages.append(
             {
-                "type": "info",
+                "type": msg_type,
                 "filename": filename,
                 "text": text,
             }
         )
 
-    def error(self, filename: str, text: str) -> None:
+    def fail(self, filename: str, text: str) -> None:
         self.is_doc_only = False
-        self.messages.append(
-            {
-                "type": "error",
-                "filename": filename,
-                "text": text,
-            }
-        )
+        self._add_message("fail", filename, text)
+
+    def success(self, filename: str, text: str) -> None:
+        self._add_message("success", filename, text)
+
+    def error(self, filename: str, text: str) -> None:
+        self.errored = True
+        self.is_doc_only = False
+        self._add_message("error", filename, text)
+
+    def info(self, filename: str, text: str) -> None:
+        self._add_message("info", filename, text)
 
     def to_json(self) -> HookOutputDict:
         return {
+            "errored": self.errored,
             "is_doc_only": self.is_doc_only,
             "messages": self.messages,
         }

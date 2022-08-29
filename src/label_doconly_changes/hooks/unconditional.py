@@ -5,6 +5,7 @@ from label_doconly_changes.base_hooks import FileInfo, Hook, HookOutputDict
 class UnconditionalHook(Hook):
     def run(self, app: App, file_data: list[FileInfo]) -> HookOutputDict:
         return {
+            "errored": False,
             "is_doc_only": True,
             "messages": [
                 {

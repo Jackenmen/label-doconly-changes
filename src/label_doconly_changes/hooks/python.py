@@ -252,16 +252,16 @@ class PythonHook(Hook):
                     file_info.contents_before, file_info.contents_after
                 )
             except cst.ParserSyntaxError as exc:
-                hook_output.error(file_info.filename, str(exc))
+                hook_output.fail(file_info.filename, str(exc))
             else:
                 # TODO: run AST check (on a tree with stripped docstrings)
                 # for additional safety
                 if analyzer.is_docstring_only():
-                    hook_output.info(
+                    hook_output.success(
                         file_info.filename, "contains only docstring changes."
                     )
                 else:
-                    hook_output.error(
+                    hook_output.fail(
                         file_info.filename, "contains non-docstring changes."
                     )
 

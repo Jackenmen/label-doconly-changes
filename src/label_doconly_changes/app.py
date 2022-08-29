@@ -4,6 +4,7 @@ import importlib
 import os
 import subprocess
 import sys
+from typing import Literal
 
 from .base_hooks import FileInfo, get_hook_by_name
 
@@ -16,7 +17,8 @@ class App:
         options: dict[str, str] | None = None,
         hook_options: dict[str, dict[str, str]] | None = None,
     ) -> None:
-        self.exit_code = 0
+        self.errored = False
+        self.is_doc_only = True
         self.base_ref = base_ref
         self.options: dict[str, str] = {
             "enabled_hooks": "unconditional,python",
@@ -24,6 +26,20 @@ class App:
         }
         self.hook_options = hook_options or {}
         self.hooks = []
+        self.message_callbacks = {
+            "fail": self.fail,
+            "success": self.success,
+            "error": self.error,
+            "info": self.info,
+        }
+
+    @property
+    def exit_code(self) -> Literal[0, 1, 2]:
+        if self.errored:
+            return 1
+        if not self.is_doc_only:
+            return 2
+        return 0
 
     @classmethod
     def from_environ(cls) -> App:
@@ -55,12 +71,20 @@ class App:
                 hook.set_file_patterns(allowed_files.splitlines())
             self.hooks.append(hook)
 
-    def info(self, filename: str, text: str) -> None:
+    def fail(self, filename: str, text: str) -> None:
+        self.is_doc_only = False
+        print("!!!", filename, text, file=sys.stderr)
+
+    def success(self, filename: str, text: str) -> None:
         print(filename, text)
 
     def error(self, filename: str, text: str) -> None:
-        self.exit_code = 1
+        self.errored = True
+        self.is_doc_only = False
         print("!!!", filename, text, file=sys.stderr)
+
+    def info(self, filename: str, text: str) -> None:
+        print(filename, text)
 
     def run(self) -> int:
         files = subprocess.check_output(
@@ -76,21 +100,19 @@ class App:
                     try:
                         info = FileInfo.from_filename(filename, base_ref=self.base_ref)
                     except FileNotFoundError as exc:
-                        self.error(filename, str(exc))
+                        self.fail(filename, str(exc))
                     else:
                         to_run[hook].append(info)
                     break
             else:
-                self.error(filename, "is not documentation.")
+                self.fail(filename, "is not documentation.")
 
         for hook, file_data in to_run.items():
             output = hook.run(self, file_data)
             for message in output["messages"]:
                 filename = message["filename"]
                 text = message["text"]
-                if message["type"] == "error":
-                    self.error(filename, text)
-                else:
-                    self.info(filename, text)
+                msg_type = message["type"]
+                self.message_callbacks[msg_type](filename, text)
 
         return self.exit_code
