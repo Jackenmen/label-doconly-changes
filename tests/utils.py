@@ -38,4 +38,8 @@ def _read_test_file(lines: Iterator[str]) -> tuple[str, str]:
             raise RuntimeError("Did not find the end of AFTER section")
         raise RuntimeError("Did not find the end of BEFORE section")
 
+    # remove last new line to allow files not ending with an empty line
+    before_lines[-1] = before_lines[-1][:-1]
+    after_lines[-1] = after_lines[-1][:-1]
+
     return "".join(before_lines), "".join(after_lines)
