@@ -32,7 +32,8 @@ def simplify_list(nodes: list[cst.CSTNode], *, max_depth: int = 1) -> str:
     return cst.parse_module(repr(nodes)).visit(visitor).code
 
 
-def print_extractor_info(extractor: python.DocstringExtractor) -> None:
+def print_extractor_info(tracker: python.ModuleTracker) -> None:
+    extractor = tracker.extractor
     print("+ contents:")
     print(extractor.base_node.code)
     print("+ module node:")

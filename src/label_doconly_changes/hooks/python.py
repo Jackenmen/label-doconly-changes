@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import dataclasses
+import enum
 import itertools
 import os
 from collections import deque
 from collections.abc import Iterator, Sequence
-from typing import TypeVar
+from typing import Literal, NamedTuple, TypeVar
 
 import libcst as cst
 
@@ -19,6 +20,22 @@ _DocstringTarget = cst.Module | cst.ClassDef | cst.FunctionDef
 _DocstringLocation = (
     tuple[cst.BaseSuite | cst.SimpleStatementLine, cst.Expr] | tuple[None, None]
 )
+_NodeT = TypeVar("_NodeT", bound=cst.CSTNode)
+
+
+class DocstringLocation(NamedTuple):
+    expr_parent: (
+        cst.BaseCompoundStatement | cst.BaseSuite | cst.SimpleStatementLine | None
+    )
+    expr: cst.Expr | None
+
+    @classmethod
+    def empty(cls) -> DocstringLocation:
+        return cls(None, None)
+
+
+class ContinueSentinel(enum.Enum):
+    CONTINUE = enum.auto()
 
 
 def shallow_equals(a: cst.CSTNode, b: cst.CSTNode) -> bool:
@@ -66,7 +83,7 @@ class NodeListGenerator(cst.CSTVisitor):
 class DocstringExtractor(NodeListGenerator):
     def __init__(self, module: cst.Module) -> None:
         super().__init__(module)
-        self.doc_locations: dict[_DocstringTarget, _DocstringLocation] = {}
+        self.doc_locations: dict[_DocstringTarget, DocstringLocation] = {}
 
     def visit_Module(self, node: cst.Module) -> None:
         self.doc_locations[node] = self.extract_docstring(node)
@@ -77,11 +94,12 @@ class DocstringExtractor(NodeListGenerator):
     def visit_FunctionDef(self, node: cst.FunctionDef) -> None:
         self.doc_locations[node] = self.extract_docstring(node)
 
-    def extract_docstring(self, node: _DocstringTarget) -> _DocstringLocation:
+    def extract_docstring(self, node: _DocstringTarget) -> DocstringLocation:
         body = node.body
+        expr: cst.BaseSuite | cst.BaseStatement | cst.BaseSmallStatement
         if isinstance(body, Sequence):
             if not node.body:
-                return (None, None)
+                return DocstringLocation.empty()
             expr = body[0]
         else:
             expr = body
@@ -89,21 +107,22 @@ class DocstringExtractor(NodeListGenerator):
         parent = expr
         while isinstance(expr, (cst.BaseSuite, cst.SimpleStatementLine)):
             if not expr.body:
-                return (None, None)
+                return DocstringLocation.empty()
             parent = expr
             expr = expr.body[0]
         if not isinstance(expr, cst.Expr):
-            return (None, None)
+            return DocstringLocation.empty()
 
         val = expr.value
-        # if something is not a string, it can't be a docstring :)
+        # If something is not a string, it can't be a docstring :)
         if not isinstance(val, (cst.SimpleString, cst.ConcatenatedString)):
-            return (None, None)
-        # concatenated string may be None if some part of it is an f-string
+            return DocstringLocation.empty()
+        # Concatenated string's evaluated value may be None
+        # if some part of it is an f-string.
         if val.evaluated_value is None:
-            return (None, None)
+            return DocstringLocation.empty()
 
-        return (parent, expr)
+        return DocstringLocation(parent, expr)
 
 
 class NodeIterator(Iterator[cst.CSTNode]):
@@ -114,7 +133,7 @@ class NodeIterator(Iterator[cst.CSTNode]):
         self.nodes = nodes
         self.nodes_it = enumerate(nodes)
 
-    def __repr__(self) -> None:
+    def __repr__(self) -> str:
         return f"<NodeIterator {self.name!r} current={self.current!r}>"
 
     def __iter__(self) -> NodeIterator:
@@ -127,70 +146,131 @@ class NodeIterator(Iterator[cst.CSTNode]):
         return node
 
 
+class ModuleTracker:
+    def __init__(self, contents: str, *, name: Literal["before", "after"]) -> None:
+        self.extractor = DocstringExtractor.from_contents(contents)
+        self.it = NodeIterator(self.extractor.nodes, name=name)
+        self.loc: DocstringLocation = DocstringLocation.empty()
+
+    @property
+    def has_docstring(self) -> bool:
+        return self.loc[0] is not None
+
+
 class PythonAnalyzer:
     def __init__(self, contents_before: str, contents_after: str) -> None:
-        self.before = DocstringExtractor.from_contents(contents_before)
-        self.after = DocstringExtractor.from_contents(contents_after)
+        self.before = ModuleTracker(contents_before, name="before")
+        self.after = ModuleTracker(contents_after, name="after")
+        self.it = itertools.zip_longest(self.before.it, self.after.it)
+        #: Count of the docstring expressions in the currently tracked docstring target.
+        #: 0 means that there's no currently tracked docstring target (which can mean
+        #: that the target we tried to track didn't have docstrings or that we were
+        #: simply not tracking anything).
+        self.expr_count = 0
+        #: Determines if the next single comparison should be skipped.
+        self.skip_compare = False
 
     def is_docstring_only(self) -> bool:
-        before_it = NodeIterator(self.before.nodes, name="before")
-        after_it = NodeIterator(self.after.nodes, name="after")
-        before_loc = after_loc = (None, None)
-        expr_count = 0
-        skip_compare = False
-        it = itertools.zip_longest(before_it, after_it)
-        for a, b in it:
-            if a is None or b is None:
+        for b, a in self.it:
+            # The zipped iterators should both end at the same time.
+            if b is None or a is None:
                 return False
 
-            if expr_count == 1 and (a is before_loc[0] or b is after_loc[0]):
-                expr_count = 0
-                if a is before_loc[0]:
-                    a = self._consume_docstring_with_whitespace(
-                        before_it, before_loc[1]
-                    )
-                else:
-                    b = self._consume_docstring_with_whitespace(after_it, after_loc[1])
-                before_it.additional_nodes.appendleft(a)
-                after_it.additional_nodes.appendleft(b)
-                for a, b in it:
-                    if a is None or b is None:
-                        return False
-                    if not shallow_equals(a, b):
-                        return False
-                    if isinstance(a, cst.BaseStatement):
-                        break
-                self._consume_leading_lines(a, before_it)
-                self._consume_leading_lines(b, after_it)
+            if (ret := self._handle_docstring_addition_and_removal(b, a)) is False:
+                return False
+            if ret is ContinueSentinel.CONTINUE:
                 continue
 
-            if skip_compare:
-                skip_compare = False
-            elif not shallow_equals(a, b):
+            if self.skip_compare:
+                self.skip_compare = False
+            elif not shallow_equals(b, a):
                 return False
 
-            if expr_count == 2 and a is before_loc[1]:
-                expr_count = 0
-                skip_compare = True
+            # If both docstring targets have a docstring, we don't want to compare their
+            # contents so we set skip_compare when we see the docstring's Expr node.
+            if self.expr_count == 2 and b is self.before.loc.expr:
+                self.expr_count = 0
+                self.skip_compare = True
                 continue
 
-            node_type = type(a)
-            if node_type in (cst.Module, cst.ClassDef, cst.FunctionDef):
-                before_loc = self.before.doc_locations[a]
-                after_loc = self.after.doc_locations[b]
-                expr_count = 2 - (before_loc, after_loc).count((None, None))
-                if expr_count == 1 and node_type is cst.Module:
-                    if before_loc[0] is None:
-                        self._consume_leading_lines(a, before_it)
-                    else:
-                        self._consume_leading_lines(b, after_it)
+            self._handle_docstring_target_node(b, a)
 
         return True
+
+    def _handle_docstring_addition_and_removal(
+        self, b: cst.CSTNode, a: cst.CSTNode
+    ) -> bool | ContinueSentinel:
+        if self.expr_count != 1:
+            return True
+        if b is not self.before.loc.expr_parent and a is not self.after.loc.expr_parent:
+            return True
+        self.expr_count = 0
+
+        # Consume the docstring and everything until first non-whitespace
+        # in the iterator that has a docstring.
+        if b is self.before.loc.expr_parent:
+            b = self._consume_docstring_with_whitespace(
+                self.before.it, self.before.loc.expr
+            )
+        else:
+            a = self._consume_docstring_with_whitespace(
+                self.after.it, self.after.loc.expr
+            )
+
+        # Now that we're done with that, we still need to consume the whitespace which
+        # may appear in the header/leading_lines of the nearest statement
+        # as the iterator yields that statement *before* that whitespace and so
+        # it wasn't consumed by the call before. This time we also want to consume
+        # whitespace that appears in the iterator that didn't have a docstring.
+
+        # Find the nearest statement, while checking that all encountered nodes
+        # are equal. This is a simplified version of the main loop.
+        self.before.it.additional_nodes.appendleft(b)
+        self.after.it.additional_nodes.appendleft(a)
+        for b, a in self.it:
+            if b is None or a is None:
+                return False
+            if not shallow_equals(b, a):
+                return False
+            if isinstance(b, (cst.SimpleStatementLine, cst.BaseCompoundStatement)):
+                break
+        else:
+            raise RuntimeError("Couldn't find a statement node.")
+
+        self._consume_leading_lines(b, self.before.it)
+        # b and a must have same types here due to earlier shallow_equals() call
+        self._consume_leading_lines(a, self.after.it)  # type: ignore
+
+        return ContinueSentinel.CONTINUE
+
+    def _handle_docstring_target_node(self, b: _NodeT, a: _NodeT) -> Literal[False]:
+        if type(b) in (cst.Module, cst.ClassDef, cst.FunctionDef):
+            self.before.loc = self.before.extractor.doc_locations[b]
+            self.after.loc = self.after.extractor.doc_locations[a]
+            self.expr_count = self.before.has_docstring + self.after.has_docstring
+
+            # If node is a module, we need to handle potential Comment nodes
+            # in the module's header as they appear before the docstring and
+            # we don't want to consume them in _handle_docstring_addition_and_removal().
+            if self.expr_count == 1 and type(b) is cst.Module:
+                if self.before.loc.expr_parent is None:
+                    self._consume_leading_lines(b, self.before.it)
+                else:
+                    self._consume_leading_lines(a, self.after.it)
+
+        return False
 
     @staticmethod
     def _consume_docstring_with_whitespace(
         nodes: NodeIterator, expr: cst.Expr
     ) -> cst.CSTNode:
+        """
+        Consume the passed docstring expression (including its whole string)
+        and the whitespace surrounding it.
+
+        Comments are added to the iterator's additional nodes instead of being consumed.
+        """
+        node = None
         skip_until = None
         additional_nodes = []
         for node in nodes:
@@ -198,17 +278,18 @@ class PythonAnalyzer:
                 if node is skip_until:
                     skip_until = None
                 continue
+
             if type(node) in (
                 cst.TrailingWhitespace,
                 cst.SimpleWhitespace,
                 cst.Newline,
-                # TODO: check if this needs to be here?
                 cst.EmptyLine,
             ):
                 continue
             if type(node) is cst.Comment:
                 additional_nodes.append(node)
                 continue
+
             if node is expr:
                 skip_until = expr.value
                 while isinstance(skip_until, cst.ConcatenatedString):
@@ -218,6 +299,8 @@ class PythonAnalyzer:
         else:
             if skip_until is not None:
                 raise RuntimeError("Couldn't find the `skip_until` node.")
+            assert node is not None
+
         nodes.additional_nodes.extend(additional_nodes)
         return node
 
@@ -226,7 +309,14 @@ class PythonAnalyzer:
         statement: cst.Module | cst.SimpleStatementLine | cst.BaseCompoundStatement,
         iterator: NodeIterator,
     ) -> None:
-        if type(statement) is cst.Module:
+        """
+        Consume passed statement's leading lines from the iterator, excluding comments
+        (which are added to iterator's additional nodes).
+
+        If the passed `statement` is a Module node, `header` attribute is used
+        instead of `leading_lines`.
+        """
+        if isinstance(statement, cst.Module):
             leading_lines = statement.header
         else:
             leading_lines = statement.leading_lines
@@ -266,4 +356,4 @@ class PythonHook(Hook):
         return hook_output.to_json()
 
 
-AVAILABLE_HOOKS = [PythonHook(__name__, file_patterns=["*.py"])]
+AVAILABLE_HOOKS = [PythonHook(__name__, file_patterns=("*.py",))]
