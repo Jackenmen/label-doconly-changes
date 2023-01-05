@@ -156,7 +156,7 @@ class App:
         try:
             if self.is_doc_only:
                 labels_to_apply = labels - self.pr_info.labels
-                resp = session.post(BASE_URL, json={"labels": labels_to_apply})
+                resp = session.post(BASE_URL, json={"labels": list(labels_to_apply)})
                 resp.raise_for_status()
             else:
                 labels_to_remove = labels & self.pr_info.labels
