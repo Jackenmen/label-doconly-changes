@@ -154,14 +154,18 @@ class App:
         session = requests.Session()
         labels = set(self.options["labels"].split(","))
         try:
+            base_url = BASE_URL.format(
+                repo_full_name=self.pr_info.repo_full_name,
+                pr_number=self.pr_info.number,
+            )
             if self.is_doc_only:
                 labels_to_apply = labels - self.pr_info.labels
-                resp = session.post(BASE_URL, json={"labels": list(labels_to_apply)})
+                resp = session.post(base_url, json={"labels": list(labels_to_apply)})
                 resp.raise_for_status()
             else:
                 labels_to_remove = labels & self.pr_info.labels
                 for label in labels_to_remove:
-                    resp = session.delete(f"{BASE_URL}/{label}")
+                    resp = session.delete(f"{base_url}/{label}")
                     resp.raise_for_status()
         except requests.HTTPError as exc:
             self.errored = True
