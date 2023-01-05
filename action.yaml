@@ -30,5 +30,5 @@ runs:
         pipx run
         --python '${{ steps.python-for-action.outputs.python-path }}'
         --spec '${{ github.action_path }}'
-        label_doconly_changes
+        label-doconly-changes
       shell: bash
