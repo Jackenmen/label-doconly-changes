@@ -1,6 +1,6 @@
 # label-doconly-changes
 
-[![Sponsor on GitHub](https://img.shields.io/github/sponsors/jack1142?logo=github)](https://github.com/sponsors/jack1142)
+[![Sponsor on GitHub](https://img.shields.io/github/sponsors/Jackenmen?logo=github)](https://github.com/sponsors/Jackenmen)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Imports: isort](https://user-images.githubusercontent.com/6032823/111363465-600fe880-8690-11eb-8377-ec1d4d5ff981.png)](https://github.com/PyCQA/isort)
 [![We use pre-commit!](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white)](https://github.com/pre-commit/pre-commit)
@@ -29,7 +29,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Label documentation-only changes.
-        uses: jack1142/label-doconly-changes@v1
+        uses: Jackenmen/label-doconly-changes@v1
 ```
 
 ## Global options
@@ -46,7 +46,7 @@ Default value: `unconditional,python`
 
 ```yaml
 - name: Label documentation-only changes.
-  uses: jack1142/label-doconly-changes@v1
+  uses: Jackenmen/label-doconly-changes@v1
   env:
     LDC_ENABLED_HOOKS: unconditional
 ```
@@ -59,7 +59,7 @@ Default value: `doc-only`
 
 ```yaml
 - name: Label documentation-only changes.
-  uses: jack1142/label-doconly-changes@v1
+  uses: Jackenmen/label-doconly-changes@v1
   env:
     LDC_LABELS: Documentation-only change,Non-code change
 ```
@@ -76,7 +76,7 @@ Default value is hook-specific.
 
 ```yaml
 - name: Label documentation-only changes.
-  uses: jack1142/label-doconly-changes@v1
+  uses: Jackenmen/label-doconly-changes@v1
   env:
     LDC_HOOK_UNCONDITIONAL__FILES: |-
       *.rst
@@ -122,7 +122,7 @@ permissions:
 label_doconly_changes:
   steps:
     - name: Label documentation-only changes.
-      uses: jack1142/label-doconly-changes@v1
+      uses: Jackenmen/label-doconly-changes@v1
       env:
         # unconditionally label *.txt files if they're not `docs/prolog.txt`
         LDC_HOOK_UNCONDITIONAL__FILES: |-
@@ -141,4 +141,4 @@ Distributed under the Apache License 2.0. See ``LICENSE`` for more information.
 ---
 
 > Jakub Kuczys &nbsp;&middot;&nbsp;
-> GitHub [@jack1142](https://github.com/jack1142)
+> GitHub [@Jackenmen](https://github.com/Jackenmen)
