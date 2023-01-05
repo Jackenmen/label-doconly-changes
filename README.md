@@ -51,6 +51,19 @@ Default value: `unconditional,python`
     LDC_ENABLED_HOOKS: unconditional
 ```
 
+### `LDC_LABELS`
+
+Comma-separated list of labels to apply to/remove from documentation-only pull requests.
+
+Default value: `doc-only`
+
+```yaml
+- name: Label documentation-only changes.
+  uses: jack1142/label-doconly-changes@v1
+  env:
+    LDC_LABELS: Documentation-only change,Non-code change
+```
+
 ### `LDC_HOOK_<HOOK_NAME>__FILES`
 
 Gitignore-style patterns ('wildmatch' patterns) for files that should be

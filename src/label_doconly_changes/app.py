@@ -1,12 +1,25 @@
 from __future__ import annotations
 
+import dataclasses
 import importlib
+import json
 import os
 import subprocess
 import sys
 from typing import Literal
 
+import requests
+
 from .base_hooks import FileInfo, Hook, HookModule, get_hook_by_name
+
+BASE_URL = "https://api.github.com/repos/{repo_full_name}/issues/{pr_number}/labels"
+
+
+@dataclasses.dataclass
+class PullRequestInfo:
+    repo_full_name: str
+    number: int
+    labels: set[str]
 
 
 class App:
@@ -16,12 +29,14 @@ class App:
         base_ref: str,
         options: dict[str, str] | None = None,
         hook_options: dict[str, dict[str, str]] | None = None,
+        pr_info: PullRequestInfo | None = None,
     ) -> None:
         self.errored = False
         self.is_doc_only = True
         self.base_ref = base_ref
         self.options: dict[str, str] = {
             "enabled_hooks": "unconditional,python",
+            "labels": "doc-only",
             **(options or {}),
         }
         self.hook_options = hook_options or {}
@@ -32,11 +47,14 @@ class App:
             "error": self.error,
             "info": self.info,
         }
+        self.pr_info = pr_info
 
     @property
     def exit_code(self) -> Literal[0, 1, 2]:
         if self.errored:
             return 1
+        if self.pr_info is not None:
+            return 0
         if not self.is_doc_only:
             return 2
         return 0
@@ -54,10 +72,24 @@ class App:
                 else:
                     app_options[key[4:].lower()] = value
 
+        pr_info: PullRequestInfo | None = None
+        if not bool(int(app_options.get("detect_only", 0))):
+            with open(os.environ["GITHUB_EVENT_PATH"], encoding="utf-8") as fp:
+                event_data = json.load(fp)
+                pr_info = PullRequestInfo(
+                    repo_full_name=event_data["repository"]["full_name"],
+                    number=event_data["number"],
+                    labels={
+                        label_data["name"]
+                        for label_data in event_data["pull_request"]["labels"]
+                    },
+                )
+
         return cls(
             base_ref=os.environ["GITHUB_BASE_REF"],
             options=app_options,
             hook_options=hook_options,
+            pr_info=pr_info,
         )
 
     def load_hooks(self) -> None:
@@ -115,5 +147,24 @@ class App:
                 text = message["text"]
                 msg_type = message["type"]
                 self.message_callbacks[msg_type](filename, text)
+
+        if self.pr_info is None:
+            return self.exit_code
+
+        session = requests.Session()
+        labels = set(self.options["labels"].split(","))
+        try:
+            if self.is_doc_only:
+                labels_to_apply = labels - self.pr_info.labels
+                resp = session.post(BASE_URL, json={"labels": labels_to_apply})
+                resp.raise_for_status()
+            else:
+                labels_to_remove = labels & self.pr_info.labels
+                for label in labels_to_remove:
+                    resp = session.delete(f"{BASE_URL}/{label}")
+                    resp.raise_for_status()
+        except requests.HTTPError as exc:
+            self.errored = True
+            print("!!!", str(exc), file=sys.stderr)
 
         return self.exit_code
