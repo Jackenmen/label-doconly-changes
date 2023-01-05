@@ -51,7 +51,7 @@ Default value: `unconditional,python`
     LDC_ENABLED_HOOKS: unconditional
 ```
 
-### `LXC_HOOK_<HOOK_NAME>__FILES`
+### `LDC_HOOK_<HOOK_NAME>__FILES`
 
 Gitignore-style patterns ('wildmatch' patterns) for files that should be
 handled by the `<HOOK_NAME>` hook. As opposed to .gitignore, these patterns
@@ -65,7 +65,7 @@ Default value is hook-specific.
 - name: Label documentation-only changes.
   uses: jack1142/label-doconly-changes@v1
   env:
-    LXC_HOOK_UNCONDITIONAL__FILES: |-
+    LDC_HOOK_UNCONDITIONAL__FILES: |-
       *.rst
       *.md
 ```
@@ -76,7 +76,7 @@ Default value is hook-specific.
 
 Files handled by this hook are allowed to be in the PR unconditionally.
 
-Default value of `LXC_HOOK_UNCONDTIONAL__FILES`:
+Default value of `LDC_HOOK_UNCONDTIONAL__FILES`:
 ```gitignore
 *.rst
 *.md
@@ -91,7 +91,7 @@ The parser used by this hook is [LibCST](https://github.com/Instagram/LibCST)
 which supports parsing syntax of Python 3.0 and above.
 Currently there is no way to choose the version that should be used by the parser.
 
-Default value of `LXC_HOOK_PYTHON__FILES`:
+Default value of `LDC_HOOK_PYTHON__FILES`:
 ```gitignore
 *.py
 ```
@@ -112,7 +112,7 @@ label_doconly_changes:
       uses: jack1142/label-doconly-changes@v1
       env:
         # unconditionally label *.txt files if they're not `docs/prolog.txt`
-        LXC_HOOK_UNCONDITIONAL__FILES: |-
+        LDC_HOOK_UNCONDITIONAL__FILES: |-
           *.rst
           *.md
           *.txt
