@@ -201,8 +201,14 @@ class SubprocessHook(Hook):
 
 
 class HookModule(Protocol):
+    __name__: str
     AVAILABLE_HOOKS: list[Hook]
 
 
-def get_hook_by_name(module: HookModule, name: str):
-    return next(hook for hook in module.AVAILABLE_HOOKS if hook.name == name)
+def get_hook_by_name(module: HookModule, name: str) -> Hook:
+    try:
+        return next(hook for hook in module.AVAILABLE_HOOKS if hook.name == name)
+    except StopIteration:
+        raise KeyError(
+            f"There's no hook named {name!r} in module {module.__name__!r}"
+        ) from None
