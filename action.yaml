@@ -1,8 +1,11 @@
 name: Label documentation only PRs.
 author: Jakub Kuczys
 description: >-
-  GitHub action for labelling and unlabelling PRs based on whether they contain
-  only documentation changes. Supports file patterns and Python docstrings.
+  Label PRs based on whether they contain only documentation changes.
+  Supports file patterns and Python docstrings.
+branding:
+  color: green
+  icon: book
 runs:
   using: composite
   steps:
