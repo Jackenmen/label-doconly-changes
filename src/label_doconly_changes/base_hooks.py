@@ -4,7 +4,15 @@ import json
 import os
 import subprocess
 import tempfile
-from typing import TYPE_CHECKING, Any, Literal, Protocol, TypedDict
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Iterable,
+    Literal,
+    Protocol,
+    TypedDict,
+    runtime_checkable,
+)
 
 import pathspec
 
@@ -152,7 +160,7 @@ class Hook:
     def __hash__(self) -> int:
         return hash(self.name)
 
-    def set_file_patterns(self, file_patterns: tuple[str, ...]) -> None:
+    def set_file_patterns(self, file_patterns: Iterable[str]) -> None:
         self.spec = pathspec.PathSpec.from_lines("gitwildmatch", file_patterns)
 
     def get_hook_input(self, app: App, file_data: list[FileInfo]) -> HookInputDict:
@@ -200,6 +208,7 @@ class SubprocessHook(Hook):
                 return json.load(fp)
 
 
+@runtime_checkable
 class HookModule(Protocol):
     __name__: str
     AVAILABLE_HOOKS: list[Hook]

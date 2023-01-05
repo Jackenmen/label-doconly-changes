@@ -6,7 +6,7 @@ import itertools
 import os
 from collections import deque
 from collections.abc import Iterator, Sequence
-from typing import Literal, NamedTuple, TypeVar
+from typing import Generic, Literal, NamedTuple, Self, TypeVar
 
 import libcst as cst
 
@@ -15,23 +15,23 @@ from label_doconly_changes.base_hooks import FileInfo, Hook, HookOutput, HookOut
 
 os.environ["LIBCST_PARSER_TYPE"] = "native"
 
-_NodeListGeneratorT = TypeVar("_NodeListGeneratorT", bound="NodeListGenerator")
 _DocstringTarget = cst.Module | cst.ClassDef | cst.FunctionDef
-_DocstringLocation = (
-    tuple[cst.BaseSuite | cst.SimpleStatementLine, cst.Expr] | tuple[None, None]
-)
 _NodeT = TypeVar("_NodeT", bound=cst.CSTNode)
+_ExprParentT = TypeVar("_ExprParentT")
+_ExprT = TypeVar("_ExprT")
 
 
-class DocstringLocation(NamedTuple):
-    expr_parent: (
-        cst.BaseCompoundStatement | cst.BaseSuite | cst.SimpleStatementLine | None
-    )
-    expr: cst.Expr | None
+class DocstringLocation(NamedTuple, Generic[_ExprParentT, _ExprT]):
+    expr_parent: _ExprParentT
+    expr: _ExprT
 
-    @classmethod
-    def empty(cls) -> DocstringLocation:
-        return cls(None, None)
+
+_DocstringLocation = (
+    DocstringLocation[
+        cst.BaseCompoundStatement | cst.BaseSuite | cst.SimpleStatementLine, cst.Expr
+    ]
+    | DocstringLocation[None, None]
+)
 
 
 class ContinueSentinel(enum.Enum):
@@ -68,13 +68,13 @@ class NodeListGenerator(cst.CSTVisitor):
         return super().on_visit(node)
 
     @classmethod
-    def from_contents(cls, contents: str) -> _NodeListGeneratorT:
+    def from_contents(cls, contents: str) -> Self:
         self = cls(cst.parse_module(contents))
         self.base_node.visit(self)
         return self
 
     @classmethod
-    def from_node(cls, base_node: cst.CSTNode) -> _NodeListGeneratorT:
+    def from_node(cls, base_node: cst.CSTNode) -> Self:
         self = cls(base_node)
         base_node.visit(self)
         return self
@@ -83,7 +83,7 @@ class NodeListGenerator(cst.CSTVisitor):
 class DocstringExtractor(NodeListGenerator):
     def __init__(self, module: cst.Module) -> None:
         super().__init__(module)
-        self.doc_locations: dict[_DocstringTarget, DocstringLocation] = {}
+        self.doc_locations: dict[_DocstringTarget, _DocstringLocation] = {}
 
     def visit_Module(self, node: cst.Module) -> None:
         self.doc_locations[node] = self.extract_docstring(node)
@@ -94,12 +94,12 @@ class DocstringExtractor(NodeListGenerator):
     def visit_FunctionDef(self, node: cst.FunctionDef) -> None:
         self.doc_locations[node] = self.extract_docstring(node)
 
-    def extract_docstring(self, node: _DocstringTarget) -> DocstringLocation:
+    def extract_docstring(self, node: _DocstringTarget) -> _DocstringLocation:
         body = node.body
         expr: cst.BaseSuite | cst.BaseStatement | cst.BaseSmallStatement
         if isinstance(body, Sequence):
             if not node.body:
-                return DocstringLocation.empty()
+                return DocstringLocation(None, None)
             expr = body[0]
         else:
             expr = body
@@ -107,20 +107,20 @@ class DocstringExtractor(NodeListGenerator):
         parent = expr
         while isinstance(expr, (cst.BaseSuite, cst.SimpleStatementLine)):
             if not expr.body:
-                return DocstringLocation.empty()
+                return DocstringLocation(None, None)
             parent = expr
             expr = expr.body[0]
         if not isinstance(expr, cst.Expr):
-            return DocstringLocation.empty()
+            return DocstringLocation(None, None)
 
         val = expr.value
         # If something is not a string, it can't be a docstring :)
         if not isinstance(val, (cst.SimpleString, cst.ConcatenatedString)):
-            return DocstringLocation.empty()
+            return DocstringLocation(None, None)
         # Concatenated string's evaluated value may be None
         # if some part of it is an f-string.
         if val.evaluated_value is None:
-            return DocstringLocation.empty()
+            return DocstringLocation(None, None)
 
         return DocstringLocation(parent, expr)
 
@@ -150,7 +150,7 @@ class ModuleTracker:
     def __init__(self, contents: str, *, name: Literal["before", "after"]) -> None:
         self.extractor = DocstringExtractor.from_contents(contents)
         self.it = NodeIterator(self.extractor.nodes, name=name)
-        self.loc: DocstringLocation = DocstringLocation.empty()
+        self.loc: _DocstringLocation = DocstringLocation(None, None)
 
     @property
     def has_docstring(self) -> bool:
@@ -202,20 +202,23 @@ class PythonAnalyzer:
     ) -> bool | ContinueSentinel:
         if self.expr_count != 1:
             return True
-        if b is not self.before.loc.expr_parent and a is not self.after.loc.expr_parent:
-            return True
-        self.expr_count = 0
 
         # Consume the docstring and everything until first non-whitespace
         # in the iterator that has a docstring.
         if b is self.before.loc.expr_parent:
+            # b is not None so transitively, expr_parent can't be None either
+            assert self.before.loc.expr_parent is not None
             b = self._consume_docstring_with_whitespace(
                 self.before.it, self.before.loc.expr
             )
-        else:
+        elif a is self.after.loc.expr_parent:
+            assert self.after.loc.expr_parent is not None
             a = self._consume_docstring_with_whitespace(
                 self.after.it, self.after.loc.expr
             )
+        else:
+            return True
+        self.expr_count = 0
 
         # Now that we're done with that, we still need to consume the whitespace which
         # may appear in the header/leading_lines of the nearest statement
@@ -244,7 +247,10 @@ class PythonAnalyzer:
         return ContinueSentinel.CONTINUE
 
     def _handle_docstring_target_node(self, b: _NodeT, a: _NodeT) -> Literal[False]:
-        if type(b) in (cst.Module, cst.ClassDef, cst.FunctionDef):
+        valid_classes = (cst.Module, cst.ClassDef, cst.FunctionDef)
+        if type(b) in valid_classes:
+            assert isinstance(a, valid_classes)
+            assert isinstance(b, valid_classes)
             self.before.loc = self.before.extractor.doc_locations[b]
             self.after.loc = self.after.extractor.doc_locations[a]
             self.expr_count = self.before.has_docstring + self.after.has_docstring

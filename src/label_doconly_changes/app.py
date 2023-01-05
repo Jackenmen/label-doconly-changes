@@ -6,7 +6,7 @@ import subprocess
 import sys
 from typing import Literal
 
-from .base_hooks import FileInfo, get_hook_by_name
+from .base_hooks import FileInfo, Hook, HookModule, get_hook_by_name
 
 
 class App:
@@ -25,7 +25,7 @@ class App:
             **(options or {}),
         }
         self.hook_options = hook_options or {}
-        self.hooks = []
+        self.hooks: list[Hook] = []
         self.message_callbacks = {
             "fail": self.fail,
             "success": self.success,
@@ -65,6 +65,7 @@ class App:
             hook_name = hook_name.strip()
             mod_name, _, subhook_name = hook_name.partition(".")
             module = importlib.import_module(f"label_doconly_changes.hooks.{mod_name}")
+            assert isinstance(module, HookModule)
             hook = get_hook_by_name(module, hook_name)
             allowed_files = self.hook_options.get(hook_name, {}).get("allowed_files")
             if allowed_files:
@@ -92,7 +93,7 @@ class App:
         ).splitlines()
 
         self.load_hooks()
-        to_run = {hook: [] for hook in self.hooks}
+        to_run: dict[Hook, list[FileInfo]] = {hook: [] for hook in self.hooks}
 
         for filename in files:
             for hook in self.hooks:
