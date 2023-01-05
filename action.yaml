@@ -32,3 +32,5 @@ runs:
         --spec '${{ github.action_path }}'
         label-doconly-changes
       shell: bash
+      env:
+        GITHUB_TOKEN: ${{ github.token }}

@@ -20,6 +20,7 @@ class PullRequestInfo:
     repo_full_name: str
     number: int
     labels: set[str]
+    token: str
 
 
 class App:
@@ -83,6 +84,7 @@ class App:
                         label_data["name"]
                         for label_data in event_data["pull_request"]["labels"]
                     },
+                    token=os.environ["GITHUB_TOKEN"],
                 )
 
         return cls(
@@ -152,6 +154,7 @@ class App:
             return self.exit_code
 
         session = requests.Session()
+        session.headers["Authorization"] = f"Bearer {self.pr_info.token}"
         labels = set(self.options["labels"].split(","))
         try:
             base_url = BASE_URL.format(
