@@ -19,7 +19,8 @@ e.g. `.github/workflows/label_doconly_changes.yaml` with content:
 ```yaml
 name: Label the PR if it only contains documentation changes.
 on:
-  - pull_request_target
+  pull_request_target:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
 
 permissions:
   pull-requests: write
@@ -114,7 +115,8 @@ Default value of `LDC_HOOK_PYTHON__FILES`:
 ```yaml
 name: Label the PR if it only contains documentation changes.
 on:
-  - pull_request_target
+  pull_request_target:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
 
 permissions:
   pull-requests: write
