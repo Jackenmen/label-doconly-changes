@@ -12,9 +12,17 @@ runs:
     - name: Checkout the base branch for the pull request.
       uses: actions/checkout@v3
 
-    - name: Checkout the merge branch for the pull request.
+    - name: Checkout the merge branch for the open pull request.
+      if: github.event.pull_request.state == 'open'
       run: |-
         git fetch origin +refs/pull/${{ github.event.pull_request.number }}/merge
+        git checkout FETCH_HEAD
+      shell: bash
+
+    - name: Checkout the merge branch for the closed pull request.
+      if: github.event.pull_request.state != 'open'
+      run: |-
+        git fetch origin ${{ github.event.pull_request.merge_commit_sha }}
         git checkout FETCH_HEAD
       shell: bash
 
