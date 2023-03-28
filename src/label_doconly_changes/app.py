@@ -28,7 +28,6 @@ class App:
         self,
         *,
         base_ref: str,
-        head_ref: str,
         options: dict[str, str] | None = None,
         hook_options: dict[str, dict[str, str]] | None = None,
         pr_info: PullRequestInfo | None = None,
@@ -36,7 +35,6 @@ class App:
         self.errored = False
         self.is_doc_only = True
         self.base_ref = base_ref
-        self.head_ref = head_ref
         self.options: dict[str, str] = {
             "enabled_hooks": "unconditional,python",
             "labels": "doc-only",
@@ -91,7 +89,6 @@ class App:
 
         return cls(
             base_ref=os.environ["LDC_BASE_REF"],
-            head_ref=os.environ["LDC_HEAD_REF"],
             options=app_options,
             hook_options=hook_options,
             pr_info=pr_info,
@@ -178,8 +175,7 @@ class App:
 
     def run(self) -> int:
         files = subprocess.check_output(
-            ("git", "diff", "--name-only", f"{self.base_ref}..{self.head_ref}"),
-            encoding="utf-8",
+            ("git", "diff", "--name-only", f"{self.base_ref}.."), encoding="utf-8"
         ).splitlines()
 
         if not files:
