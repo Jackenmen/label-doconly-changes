@@ -121,11 +121,7 @@ class App:
     def info(self, filename: str, text: str) -> None:
         print(filename, text)
 
-    def run(self) -> int:
-        files = subprocess.check_output(
-            ("git", "diff", "--name-only", f"{self.base_ref}.."), encoding="utf-8"
-        ).splitlines()
-
+    def _process_files(self, files: list[str]) -> None:
         self.load_hooks()
         to_run: dict[Hook, list[FileInfo]] = {hook: [] for hook in self.hooks}
 
@@ -150,9 +146,7 @@ class App:
                 msg_type = message["type"]
                 self.message_callbacks[msg_type](filename, text)
 
-        if self.pr_info is None:
-            return self.exit_code
-
+    def _update_labels(self) -> None:
         session = requests.Session()
         session.headers["Authorization"] = f"Bearer {self.pr_info.token}"
         labels = set(self.options["labels"].split(","))
@@ -176,5 +170,14 @@ class App:
         except requests.HTTPError as exc:
             self.errored = True
             print("!!!", str(exc), file=sys.stderr)
+
+    def run(self) -> int:
+        files = subprocess.check_output(
+            ("git", "diff", "--name-only", f"{self.base_ref}.."), encoding="utf-8"
+        ).splitlines()
+
+        self._process_files(files)
+        if self.pr_info is not None:
+            self._update_labels()
 
         return self.exit_code
