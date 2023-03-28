@@ -182,6 +182,10 @@ class App:
             encoding="utf-8",
         ).splitlines()
 
+        if not files:
+            self.error(None, "The base branch and merge branch are identical.")
+            return self.exit_code
+
         self._process_files(files)
         if self.pr_info is not None:
             self._update_labels()
