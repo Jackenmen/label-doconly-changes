@@ -113,10 +113,13 @@ class App:
     def success(self, filename: str, text: str) -> None:
         print(filename, text)
 
-    def error(self, filename: str, text: str) -> None:
+    def error(self, filename: str | None, text: str) -> None:
         self.errored = True
         self.is_doc_only = False
-        print("!!!", filename, text, file=sys.stderr)
+        if filename:
+            print("!!!", filename, text, file=sys.stderr)
+        else:
+            print("!!!", text, file=sys.stderr)
 
     def info(self, filename: str, text: str) -> None:
         print(filename, text)
@@ -168,8 +171,7 @@ class App:
                     resp = session.delete(f"{base_url}/{label}")
                     resp.raise_for_status()
         except requests.HTTPError as exc:
-            self.errored = True
-            print("!!!", str(exc), file=sys.stderr)
+            self.error(None, str(exc))
 
     def run(self) -> int:
         files = subprocess.check_output(
