@@ -42,3 +42,15 @@ runs:
       shell: bash
       env:
         GITHUB_TOKEN: ${{ github.token }}
+        LDC_BASE_REF: |-
+          ${{
+            github.event.pull_request.merged
+              && github.event.pull_request.base.sha
+              || github.base_ref
+          }}
+        LDC_HEAD_REF: |-
+          ${{
+            github.event.pull_request.merged
+              && github.event.pull_request.head.sha
+              || ''
+          }}
