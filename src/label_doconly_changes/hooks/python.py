@@ -19,6 +19,9 @@ _DocstringTarget = cst.Module | cst.ClassDef | cst.FunctionDef
 _NodeT = TypeVar("_NodeT", bound=cst.CSTNode)
 _ExprParentT = TypeVar("_ExprParentT")
 _ExprT = TypeVar("_ExprT")
+# ensure consistent default to avoid false positives
+# caused by parser's detection mechanism for this value
+PARSER_CONFIG = cst.PartialParserConfig(default_newline="\n")
 
 
 class DocstringLocation(NamedTuple, Generic[_ExprParentT, _ExprT]):
@@ -69,7 +72,7 @@ class NodeListGenerator(cst.CSTVisitor):
 
     @classmethod
     def from_contents(cls, contents: str) -> Self:
-        self = cls(cst.parse_module(contents))
+        self = cls(cst.parse_module(contents, PARSER_CONFIG))
         self.base_node.visit(self)
         return self
 

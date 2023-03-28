@@ -29,7 +29,7 @@ class _ListSimplifier(cst.CSTTransformer):
 
 def simplify_list(nodes: list[cst.CSTNode], *, max_depth: int = 1) -> str:
     visitor = _ListSimplifier(max_depth=max_depth)
-    return cst.parse_module(repr(nodes)).visit(visitor).code
+    return cst.parse_module(repr(nodes), python.PARSER_CONFIG).visit(visitor).code
 
 
 def print_extractor_info(tracker: python.ModuleTracker) -> None:
@@ -66,6 +66,42 @@ def test_is_doc_only_true(contents_before: str, contents_after: str) -> None:
     "contents_before,contents_after", get_hook_test_data("python/is_doc_only_false.py")
 )
 def test_is_doc_only_false(contents_before: str, contents_after: str) -> None:
+    analyzer = python.PythonAnalyzer(contents_before, contents_after)
+    try:
+        assert not analyzer.is_docstring_only()
+    except Exception:
+        print_analyzer_info(analyzer)
+        raise
+
+
+@pytest.mark.parametrize(
+    "contents_before,contents_after",
+    (
+        (
+            "x = 1\ny = 2\n",
+            "x = 1\r\ny = 2\r\n",
+        ),
+        # LibCST's native parser panics with this one :D
+        #
+        # (
+        #     "x = 1\ny = 2\n",
+        #     "x = 1\ry = 2\r\n",
+        # ),
+        (
+            "x = 1\ny = 2\n",
+            "x = 1\ry = 2\r",
+        ),
+        (
+            "x = 1\ny = 2\n",
+            "x = 1\ny = 2\r\n",
+        ),
+        (
+            "x = 1\r\ny = 2\n",
+            "x = 1\ny = 2\r\n",
+        ),
+    ),
+)
+def test_different_line_endings(contents_before: str, contents_after: str) -> None:
     analyzer = python.PythonAnalyzer(contents_before, contents_after)
     try:
         assert not analyzer.is_docstring_only()

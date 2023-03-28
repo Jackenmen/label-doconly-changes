@@ -49,11 +49,12 @@ class HookOutputDict(TypedDict):
 
 def _get_file_from_ref(*, ref: str, filename: str) -> str | None:
     try:
+        # this can't use `check_output()`'s encoding or text kwarg
+        # instead of `.decode("utf-8")` because that forces universal newline behavior
         return subprocess.check_output(
             ("git", "cat-file", "blob", f"{ref}:{filename}"),
             stderr=subprocess.PIPE,
-            encoding="utf-8",
-        )
+        ).decode("utf-8")
     except subprocess.CalledProcessError as e:
         prefixes = tuple(
             f"fatal: path '{filename}' {error_msg} '"
