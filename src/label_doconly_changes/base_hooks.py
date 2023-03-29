@@ -57,7 +57,7 @@ def _get_file_from_ref(*, ref: str, filename: str) -> str | None:
         ).decode("utf-8")
     except subprocess.CalledProcessError as e:
         prefixes = tuple(
-            f"fatal: path '{filename}' {error_msg} '"
+            f"fatal: path '{filename}' {error_msg} '".encode()
             for error_msg in (
                 "exists on disk, but not in",
                 "exists, but not",
