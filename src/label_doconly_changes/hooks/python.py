@@ -344,6 +344,12 @@ class PythonHook(Hook):
     def run(self, app: App, file_data: list[FileInfo]) -> HookOutputDict:
         hook_output = HookOutput()
         for file_info in file_data:
+            if file_info.contents_before is None:
+                hook_output.fail(file_info.filename, "only exists on the head branch.")
+                continue
+            if file_info.contents_after is None:
+                hook_output.fail(file_info.filename, "only exists on the base branch.")
+                continue
             try:
                 analyzer = PythonAnalyzer(
                     file_info.contents_before, file_info.contents_after

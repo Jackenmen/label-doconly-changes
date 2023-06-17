@@ -25,8 +25,8 @@ MessageType = Literal["fail", "success", "error", "info"]
 
 class FileInfoDict(TypedDict):
     filename: str
-    contents_before: str
-    contents_after: str
+    contents_before: str | None
+    contents_after: str | None
 
 
 class HookInputDict(TypedDict):
@@ -73,7 +73,7 @@ class FileInfo:
     __slots__ = ("filename", "contents_before", "contents_after")
 
     def __init__(
-        self, filename: str, contents_before: str, contents_after: str
+        self, filename: str, contents_before: str | None, contents_after: str | None
     ) -> None:
         self.filename = filename
         self.contents_before = contents_before
@@ -82,11 +82,7 @@ class FileInfo:
     @classmethod
     def from_filename(cls, filename: str, *, base_ref: str) -> FileInfo:
         contents_before = _get_file_from_ref(ref=base_ref, filename=filename)
-        if contents_before is None:
-            raise FileNotFoundError("only exists on the head branch.")
         contents_after = _get_file_from_ref(ref="HEAD", filename=filename)
-        if contents_after is None:
-            raise FileNotFoundError("only exists on the base branch.")
 
         return cls(filename, contents_before, contents_after)
 
