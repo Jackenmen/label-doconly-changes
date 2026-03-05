@@ -10,7 +10,7 @@ runs:
   using: composite
   steps:
     - name: Checkout the base branch for the pull request.
-      uses: actions/checkout@v3
+      uses: actions/checkout@v6
 
     - name: Checkout the merge branch for the open pull request.
       if: github.event.pull_request.state == 'open'
@@ -28,7 +28,7 @@ runs:
 
     - name: Setup Python for the action.
       id: python-for-action
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v6
       with:
         python-version: "3.11"
         update-environment: false
