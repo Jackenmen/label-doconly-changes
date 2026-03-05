@@ -19,17 +19,10 @@ runs:
         git checkout -f FETCH_HEAD
       shell: bash
 
-    - name: Checkout the merge branch for the closed (unmerged) pull request.
-      if: github.event.pull_request.state != 'open' && !github.event.pull_request.merged
+    - name: Checkout the merge branch for the closed pull request.
+      if: github.event.pull_request.state != 'open'
       run: |-
         git fetch origin ${{ github.event.pull_request.merge_commit_sha }}
-        git checkout -f FETCH_HEAD
-      shell: bash
-
-    - name: Checkout the merge branch for the merged pull request.
-      if: github.event.pull_request.state != 'open' && github.event.pull_request.merged
-      run: |-
-        git fetch origin ${{ github.event.pull_request.head.sha }}
         git checkout -f FETCH_HEAD
       shell: bash
 
