@@ -26,6 +26,19 @@ runs:
         git checkout -f FETCH_HEAD
       shell: bash
 
+    - name: Fetch the base ref
+      env:
+        LDC_BASE_REF: |-
+          ${{
+            github.event.pull_request.merged
+              && github.event.pull_request.base.sha
+              || github.base_ref
+          }}
+      run: |-
+        git fetch origin "$LDC_BASE_REF"
+        echo "LDC_BASE_REF=$LDC_BASE_REF" >> "$GITHUB_ENV"
+      shell: bash
+
     - name: Setup Python for the action.
       id: python-for-action
       uses: actions/setup-python@v6
@@ -42,9 +55,3 @@ runs:
       shell: bash
       env:
         GITHUB_TOKEN: ${{ github.token }}
-        LDC_BASE_REF: |-
-          ${{
-            github.event.pull_request.merged
-              && github.event.pull_request.base.sha
-              || github.base_ref
-          }}
