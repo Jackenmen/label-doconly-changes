@@ -36,7 +36,7 @@ runs:
           }}
       run: |-
         git fetch origin "$LDC_BASE_REF"
-        echo "LDC_BASE_REF=$LDC_BASE_REF" >> "$GITHUB_ENV"
+        echo "LDC_BASE_REF=$(git rev-parse FETCH_HEAD)" >> "$GITHUB_ENV"
       shell: bash
 
     - name: Setup Python for the action.
