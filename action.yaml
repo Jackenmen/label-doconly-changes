@@ -12,17 +12,16 @@ runs:
     - name: Checkout the base branch for the pull request.
       uses: actions/checkout@v6
 
-    - name: Checkout the merge branch for the open pull request.
-      if: github.event.pull_request.state == 'open'
+    - name: Checkout the merge branch
+      env:
+        REF_TO_FETCH: |-
+          ${{
+            github.event.pull_request.state == 'open'
+              && format('+refs/pull/{0}/merge', github.event.pull_request.number)
+              || github.event.pull_request.merge_commit_sha
+          }}
       run: |-
-        git fetch origin +refs/pull/${{ github.event.pull_request.number }}/merge
-        git checkout -f FETCH_HEAD
-      shell: bash
-
-    - name: Checkout the merge branch for the closed pull request.
-      if: github.event.pull_request.state != 'open'
-      run: |-
-        git fetch origin ${{ github.event.pull_request.merge_commit_sha }}
+        git fetch origin "$REF_TO_FETCH"
         git checkout -f FETCH_HEAD
       shell: bash
 
@@ -47,11 +46,9 @@ runs:
         update-environment: false
 
     - name: Run the action.
-      run: >-
-        pipx run
-        --python '${{ steps.python-for-action.outputs.python-path }}'
-        --spec '${{ github.action_path }}'
-        label-doconly-changes
-      shell: bash
       env:
+        PATH_TO_PYTHON: ${{ steps.python-for-action.outputs.python-path }}
         GITHUB_TOKEN: ${{ github.token }}
+      run: >-
+        pipx run --python "$PATH_TO_PYTHON" --spec "$GITHUB_ACTION_PATH" label-doconly-changes
+      shell: bash
