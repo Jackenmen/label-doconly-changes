@@ -12,7 +12,8 @@ runs:
     - name: Checkout the base branch for the pull request.
       uses: actions/checkout@v6
 
-    - name: Checkout the merge branch
+    - name: Determine the ref to fetch
+      id: ref-to-fetch
       env:
         REF_TO_FETCH: |-
           ${{
@@ -20,10 +21,18 @@ runs:
               && format('+refs/pull/{0}/merge', github.event.pull_request.number)
               || github.event.pull_request.merge_commit_sha
           }}
+      run:
+        echo "REF_TO_FETCH=$REF_TO_FETCH" >> "$GITHUB_OUTPUT"
+      shell: bash
+
+    - name: Checkout the merge branch
+      env:
+        REF_TO_FETCH: ${{ steps.ref-to-fetch.outputs.REF_TO_FETCH }}
       run: |-
         git fetch origin "$REF_TO_FETCH"
         git checkout -f FETCH_HEAD
       shell: bash
+      if: steps.ref-to-fetch.outputs.REF_TO_FETCH
 
     - name: Fetch the base ref
       env:
@@ -37,6 +46,7 @@ runs:
         git fetch origin "$LDC_BASE_REF"
         echo "LDC_BASE_REF=$(git rev-parse FETCH_HEAD)" >> "$GITHUB_ENV"
       shell: bash
+      if: steps.ref-to-fetch.outputs.REF_TO_FETCH
 
     - name: Setup Python for the action.
       id: python-for-action
@@ -44,6 +54,7 @@ runs:
       with:
         python-version: "3.11"
         update-environment: false
+      if: steps.ref-to-fetch.outputs.REF_TO_FETCH
 
     - name: Run the action.
       env:
@@ -52,3 +63,4 @@ runs:
       run: >-
         pipx run --python "$PATH_TO_PYTHON" --spec "$GITHUB_ACTION_PATH" label-doconly-changes
       shell: bash
+      if: steps.ref-to-fetch.outputs.REF_TO_FETCH
