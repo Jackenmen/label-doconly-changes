@@ -65,7 +65,7 @@ Default value: `doc-only`
     LDC_LABELS: Documentation-only change,Non-code change
 ```
 
-### `LDC_HOOK_<HOOK_NAME>__FILES`
+### `LDC_HOOK_<HOOK_NAME>__ALLOWED_FILES`
 
 Gitignore-style patterns ('wildmatch' patterns) for files that should be
 handled by the `<HOOK_NAME>` hook. As opposed to .gitignore, these patterns
@@ -79,7 +79,7 @@ Default value is hook-specific.
 - name: Label documentation-only changes.
   uses: Jackenmen/label-doconly-changes@v1
   env:
-    LDC_HOOK_UNCONDITIONAL__FILES: |-
+    LDC_HOOK_UNCONDITIONAL__ALLOWED_FILES: |-
       *.rst
       *.md
 ```
@@ -90,7 +90,7 @@ Default value is hook-specific.
 
 Files handled by this hook are allowed to be in the PR unconditionally.
 
-Default value of `LDC_HOOK_UNCONDTIONAL__FILES`:
+Default value of `LDC_HOOK_UNCONDTIONAL__ALLOWED_FILES`:
 ```gitignore
 *.rst
 *.md
@@ -105,7 +105,7 @@ The parser used by this hook is [LibCST](https://github.com/Instagram/LibCST)
 which supports parsing syntax of Python 3.0 and above.
 Currently there is no way to choose the version that should be used by the parser.
 
-Default value of `LDC_HOOK_PYTHON__FILES`:
+Default value of `LDC_HOOK_PYTHON__ALLOWED_FILES`:
 ```gitignore
 *.py
 ```
@@ -127,7 +127,7 @@ label_doconly_changes:
       uses: Jackenmen/label-doconly-changes@v1
       env:
         # unconditionally label *.txt files if they're not `docs/prolog.txt`
-        LDC_HOOK_UNCONDITIONAL__FILES: |-
+        LDC_HOOK_UNCONDITIONAL__ALLOWED_FILES: |-
           *.rst
           *.md
           *.txt
