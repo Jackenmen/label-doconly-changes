@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import json
 import os
 import subprocess
@@ -47,14 +48,14 @@ class HookOutputDict(TypedDict):
     messages: list[MessageDict]
 
 
-def _get_file_from_ref(*, ref: str, filename: str) -> str | None:
+def _get_file_from_ref(*, ref: str, filename: str) -> bytes | str | None:
     try:
         # this can't use `check_output()`'s encoding or text kwarg
         # instead of `.decode("utf-8")` because that forces universal newline behavior
-        return subprocess.check_output(
+        stdout = subprocess.check_output(
             ("git", "cat-file", "blob", f"{ref}:{filename}"),
             stderr=subprocess.PIPE,
-        ).decode("utf-8")
+        )
     except subprocess.CalledProcessError as e:
         prefixes = tuple(
             f"fatal: path '{filename}' {error_msg} '".encode()
@@ -67,13 +68,36 @@ def _get_file_from_ref(*, ref: str, filename: str) -> str | None:
         if e.stderr.startswith(prefixes):
             return None
         raise
+    try:
+        return stdout.decode("utf-8")
+    except UnicodeDecodeError:
+        return stdout
+
+
+_STR_PREFIX = "U"
+_BYTES_PREFIX = " "
+
+
+def _encode_bytes_or_str(value: bytes | str) -> str:
+    if isinstance(value, bytes):
+        return _BYTES_PREFIX + base64.a85encode(value)
+    return _STR_PREFIX + value
+
+
+def _decode_bytes_or_str(value: str) -> bytes | str:
+    if value[0] == _BYTES_PREFIX:
+        return base64.a85decode(value)
+    return value[1:]
 
 
 class FileInfo:
     __slots__ = ("filename", "contents_before", "contents_after")
 
     def __init__(
-        self, filename: str, contents_before: str | None, contents_after: str | None
+        self,
+        filename: str,
+        contents_before: bytes | str | None,
+        contents_after: bytes | str | None,
     ) -> None:
         self.filename = filename
         self.contents_before = contents_before
@@ -89,8 +113,8 @@ class FileInfo:
     def to_json(self) -> FileInfoDict:
         return {
             "filename": self.filename,
-            "contents_before": self.contents_before,
-            "contents_after": self.contents_after,
+            "contents_before": _encode_bytes_or_str(self.contents_before),
+            "contents_after": _encode_bytes_or_str(self.contents_after),
         }
 
 
