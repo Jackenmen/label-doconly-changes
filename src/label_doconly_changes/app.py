@@ -143,6 +143,8 @@ class App:
 
         for hook, file_data in to_run.items():
             output = hook.run(self, file_data)
+            if output["errored"]:
+                self.errored = True
             for message in output["messages"]:
                 filename = message["filename"]
                 text = message["text"]
