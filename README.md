@@ -43,13 +43,13 @@ Comma-separated list of enabled hooks.
 
 [Available hooks](#Available-hooks) can be found below.
 
-Default value: `unconditional,ignore,python`
+Default value: `ignore,unconditional,python`
 
 ```yaml
 - name: Label documentation-only changes.
   uses: Jackenmen/label-doconly-changes@v1
   env:
-    LDC_ENABLED_HOOKS: unconditional
+    LDC_ENABLED_HOOKS: ignore,unconditional
 ```
 
 ### `LDC_LABELS`

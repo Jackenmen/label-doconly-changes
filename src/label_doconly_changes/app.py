@@ -44,7 +44,7 @@ class App:
         self.is_doc_only = True
         self.base_ref = base_ref
         self.options: dict[str, str] = {
-            "enabled_hooks": "unconditional,ignore,python",
+            "enabled_hooks": "ignore,unconditional,python",
             "labels": "doc-only",
             **(options or {}),
         }
