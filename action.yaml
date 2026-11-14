@@ -37,6 +37,7 @@ runs:
       if: steps.ref-to-fetch.outputs.REF_TO_FETCH
 
     - name: Fetch the base ref
+      id: fetch-base-ref
       env:
         LDC_BASE_REF: |-
           ${{
@@ -46,7 +47,7 @@ runs:
           }}
       run: |-
         git fetch origin "$LDC_BASE_REF"
-        echo "LDC_BASE_REF=$(git rev-parse FETCH_HEAD)" >> "$GITHUB_ENV"
+        echo "commit=$(git rev-parse FETCH_HEAD)" >> "$GITHUB_OUTPUT"
       shell: bash
       if: steps.ref-to-fetch.outputs.REF_TO_FETCH
 
@@ -60,6 +61,7 @@ runs:
 
     - name: Run the action.
       env:
+        LDC_BASE_REF: ${{ steps.fetch-base-ref.outputs.commit }}
         PATH_TO_PYTHON: ${{ steps.python-for-action.outputs.python-path }}
         GITHUB_TOKEN: ${{ github.token }}
       run: >-
