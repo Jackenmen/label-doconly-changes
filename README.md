@@ -43,7 +43,7 @@ Comma-separated list of enabled hooks.
 
 [Available hooks](#Available-hooks) can be found below.
 
-Default value: `unconditional,python`
+Default value: `unconditional,ignore,python`
 
 ```yaml
 - name: Label documentation-only changes.
@@ -95,6 +95,14 @@ Default value of `LDC_HOOK_UNCONDTIONAL__ALLOWED_FILES`:
 *.rst
 *.md
 ```
+
+### `ignore`
+
+Files handled by this hook will be ignored when determining whether a PR is documentation-only.
+
+Unlike files handled by `uncondtional`, if a PR does not affect any other documentation files, it will not be treated as documentation-only.
+
+`LDC_HOOK_IGNORE__ALLOWED_FILES` is empty by default.
 
 ### `python`
 
