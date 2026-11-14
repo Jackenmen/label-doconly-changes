@@ -10,7 +10,9 @@ runs:
   using: composite
   steps:
     - name: Checkout the base branch for the pull request.
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
+      with:
+        allow-unsafe-pr-checkout: true
 
     - name: Determine the ref to fetch
       id: ref-to-fetch
@@ -50,7 +52,7 @@ runs:
 
     - name: Setup Python for the action.
       id: python-for-action
-      uses: actions/setup-python@v6
+      uses: actions/setup-python@v7
       with:
         python-version: "3.11"
         update-environment: false
