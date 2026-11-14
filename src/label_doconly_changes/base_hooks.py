@@ -34,6 +34,7 @@ class HookInputDict(TypedDict):
     files: list[FileInfoDict]
     options: dict[str, str]
     app_options: dict[str, str]
+    all_affected_files: list[FileInfoDict]
 
 
 class MessageDict(TypedDict):
@@ -191,6 +192,9 @@ class Hook:
             "files": [file_info.to_json() for file_info in file_data],
             "options": ctx.app.hook_options[self.name],
             "app_options": ctx.app.options,
+            "all_affected_files": [
+                file_info.to_json() for file_info in ctx.all_affected_files
+            ],
         }
 
     def run(self, ctx: RunContext, file_data: list[FileInfo]) -> HookOutputDict:

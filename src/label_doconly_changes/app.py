@@ -27,6 +27,8 @@ class PullRequestInfo:
 class RunContext:
     #: App instance.
     app: App
+    #: All files affected by the PR.
+    all_affected_files: list[FileInfo]
 
 
 class App:
@@ -134,20 +136,18 @@ class App:
         self.load_hooks()
         to_run: dict[Hook, list[FileInfo]] = {hook: [] for hook in self.hooks}
 
+        all_affected_files = []
         for filename in files:
+            info = FileInfo.from_filename(filename, base_ref=self.base_ref)
+            all_affected_files.append(info)
             for hook in self.hooks:
                 if hook.spec.match_file(filename):
-                    try:
-                        info = FileInfo.from_filename(filename, base_ref=self.base_ref)
-                    except FileNotFoundError as exc:
-                        self.fail(filename, str(exc))
-                    else:
-                        to_run[hook].append(info)
+                    to_run[hook].append(info)
                     break
             else:
                 self.fail(filename, "is not documentation.")
 
-        ctx = RunContext(self)
+        ctx = RunContext(self, all_affected_files)
         for hook, file_data in to_run.items():
             output = hook.run(ctx, file_data)
             if output["errored"]:
