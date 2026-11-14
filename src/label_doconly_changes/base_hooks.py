@@ -18,7 +18,7 @@ from typing import (
 import pathspec
 
 if TYPE_CHECKING:
-    from .app import App
+    from .app import RunContext
 
 
 MessageType = Literal["fail", "success", "error", "info"]
@@ -184,14 +184,16 @@ class Hook:
     def set_file_patterns(self, file_patterns: Iterable[str]) -> None:
         self.spec = pathspec.PathSpec.from_lines("gitwildmatch", file_patterns)
 
-    def get_hook_input(self, app: App, file_data: list[FileInfo]) -> HookInputDict:
+    def get_hook_input(
+        self, ctx: RunContext, file_data: list[FileInfo]
+    ) -> HookInputDict:
         return {
             "files": [file_info.to_json() for file_info in file_data],
-            "options": app.hook_options[self.name],
-            "app_options": app.options,
+            "options": ctx.app.hook_options[self.name],
+            "app_options": ctx.app.options,
         }
 
-    def run(self, app: App, file_data: list[FileInfo]) -> HookOutputDict:
+    def run(self, ctx: RunContext, file_data: list[FileInfo]) -> HookOutputDict:
         raise NotImplementedError
 
 
@@ -215,10 +217,10 @@ class SubprocessHook(Hook):
     def __hash__(self) -> int:
         return hash((self.name, self.script_name))
 
-    def run(self, app: App, file_data: list[FileInfo]) -> HookOutputDict:
+    def run(self, ctx: RunContext, file_data: list[FileInfo]) -> HookOutputDict:
         with tempfile.TemporaryDirectory() as tmp_dir:
-            executable_name = app.hook_options[self.name]["executable"]
-            hook_input = self.get_hook_input(app, file_data)
+            executable_name = ctx.app.hook_options[self.name]["executable"]
+            hook_input = self.get_hook_input(ctx.app, file_data)
 
             with open(os.path.join(tmp_dir, "input.json"), "w", encoding="utf-8") as fp:
                 json.dump(hook_input, fp, separators=(",", ":"))

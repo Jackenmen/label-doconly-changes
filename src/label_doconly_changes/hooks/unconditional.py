@@ -1,9 +1,9 @@
-from label_doconly_changes.app import App
+from label_doconly_changes.app import RunContext
 from label_doconly_changes.base_hooks import FileInfo, Hook, HookOutputDict
 
 
 class UnconditionalHook(Hook):
-    def run(self, app: App, file_data: list[FileInfo]) -> HookOutputDict:
+    def run(self, ctx: RunContext, file_data: list[FileInfo]) -> HookOutputDict:
         return {
             "errored": False,
             "is_doc_only": True,

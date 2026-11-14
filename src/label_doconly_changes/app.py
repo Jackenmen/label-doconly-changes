@@ -23,6 +23,12 @@ class PullRequestInfo:
     token: str
 
 
+@dataclasses.dataclass
+class RunContext:
+    #: App instance.
+    app: App
+
+
 class App:
     def __init__(
         self,
@@ -141,8 +147,9 @@ class App:
             else:
                 self.fail(filename, "is not documentation.")
 
+        ctx = RunContext(self)
         for hook, file_data in to_run.items():
-            output = hook.run(self, file_data)
+            output = hook.run(ctx, file_data)
             if output["errored"]:
                 self.errored = True
             for message in output["messages"]:

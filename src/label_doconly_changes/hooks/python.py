@@ -10,7 +10,7 @@ from typing import Generic, Literal, NamedTuple, Self, TypeVar
 
 import libcst as cst
 
-from label_doconly_changes.app import App
+from label_doconly_changes.app import RunContext
 from label_doconly_changes.base_hooks import FileInfo, Hook, HookOutput, HookOutputDict
 
 os.environ["LIBCST_PARSER_TYPE"] = "native"
@@ -341,7 +341,7 @@ class PythonAnalyzer:
 
 
 class PythonHook(Hook):
-    def run(self, app: App, file_data: list[FileInfo]) -> HookOutputDict:
+    def run(self, ctx: RunContext, file_data: list[FileInfo]) -> HookOutputDict:
         hook_output = HookOutput()
         for file_info in file_data:
             if file_info.contents_before is None:
